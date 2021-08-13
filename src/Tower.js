@@ -17,6 +17,10 @@ export const Tower_action = {
       (object.hits < 500000 && object.structureType == STRUCTURE_WALL) ||
       (object.hits < 5000 && object.structureType == STRUCTURE_CONTAINER) 
     });
+    let diren = tower.room.find(FIND_HOSTILE_CREEPS)
+    if(diren.length > 0){
+      tower.attack(diren[0])
+    }
 
     console.log(`塔修点东西 tag ${targets.length}----塔能量${tower.store[RESOURCE_ENERGY]}`)
     if(targets.length > 0 && tower.store[RESOURCE_ENERGY] > 200) {

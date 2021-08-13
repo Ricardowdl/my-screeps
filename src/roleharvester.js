@@ -7,6 +7,7 @@
  * mod.thing == 'a thing'; // true
  */
 
+import { roleBuilder } from "./role.builder";
 
 export const roleHarvester = {
 
@@ -90,6 +91,10 @@ export const roleHarvester = {
                         creep.moveTo(tower[0], {visualizePathStyle: {stroke: 'red'}});
                         console.log(`给炮塔充能${tower[0].pos}${tower[0].structureType}`)
                     }
+                }
+                if(tower.every((tow) => tow.store.getFreeCapacity(RESOURCE_ENERGY) == 0)){
+                    console.log('搬运工没事干进入修东西')
+                    roleBuilder.run(creep)
                 }
             }
         }

@@ -27,8 +27,8 @@ export const roleCarrier = {
             creep.moveTo(contains[0]);
           }
         }else{
-          console.log(`container不够资源，去挖矿`)
-          roleHarvester.run(creep);
+          console.log(`别干活了 原地等着吧`)
+          //roleHarvester.run(creep);
         }
       }
       else {

@@ -3251,10 +3251,50 @@ var SourceMapConsumer = sourceMapConsumer.SourceMapConsumer;
  * module.exports.thing = 'a thing';
  *
  * You can import it from another modules like this:
- * var mod = require('role.harvester');
+ * var mod = require('role.builder');
  * mod.thing == 'a thing'; // true
  */
 
+const roleBuilder = {
+
+    /** @param {Creep} creep **/
+    run: function(creep) {
+	    if(creep.memory.building && creep.store[RESOURCE_ENERGY] == 0) {
+            creep.memory.building = false;
+            creep.say('🔄 harvest');
+	    }
+	    if(!creep.memory.building && creep.store.getFreeCapacity() == 0) {
+	        creep.memory.building = true;
+	        creep.say('🚧 build');
+	    }
+
+	    if(creep.memory.building) {
+	        var targets = creep.room.find(FIND_CONSTRUCTION_SITES);
+					console.log('建建建建筑数量'+targets.length);
+            if(targets.length > 0) {
+							console.log('问题在于'+creep.build(targets[0]) == ERR_NOT_IN_RANGE);
+                if(creep.build(targets[0]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}});
+                }
+            }
+	    }
+	    else {
+	        var sources = creep.room.find(FIND_SOURCES);
+            if(creep.harvest(sources[1]) == ERR_NOT_IN_RANGE) {
+                creep.moveTo(sources[1], {visualizePathStyle: {stroke: '#DC143C'}});
+            }
+	    }
+	}
+};
+
+/*
+ * Module code goes here. Use 'module.exports' to export things:
+ * module.exports.thing = 'a thing';
+ *
+ * You can import it from another modules like this:
+ * var mod = require('role.harvester');
+ * mod.thing == 'a thing'; // true
+ */
 
 const roleHarvester = {
 
@@ -3339,6 +3379,10 @@ const roleHarvester = {
                         console.log(`给炮塔充能${tower[0].pos}${tower[0].structureType}`);
                     }
                 }
+                if(tower.every((tow) => tow.store.getFreeCapacity(RESOURCE_ENERGY) == 0)){
+                    console.log('搬运工没事干进入修东西');
+                    roleBuilder.run(creep);
+                }
             }
         }
 	}
@@ -3379,45 +3423,6 @@ const  roleUpgrader = {
             }
             
         }
-	}
-};
-
-/*
- * Module code goes here. Use 'module.exports' to export things:
- * module.exports.thing = 'a thing';
- *
- * You can import it from another modules like this:
- * var mod = require('role.builder');
- * mod.thing == 'a thing'; // true
- */
-
-const roleBuilder = {
-
-    /** @param {Creep} creep **/
-    run: function(creep) {
-	    if(creep.memory.building && creep.store[RESOURCE_ENERGY] == 0) {
-            creep.memory.building = false;
-            creep.say('🔄 harvest');
-	    }
-	    if(!creep.memory.building && creep.store.getFreeCapacity() == 0) {
-	        creep.memory.building = true;
-	        creep.say('🚧 build');
-	    }
-
-	    if(creep.memory.building) {
-	        var targets = creep.room.find(FIND_CONSTRUCTION_SITES);
-            if(targets.length) {
-                if(creep.build(targets[0]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}});
-                }
-            }
-	    }
-	    else {
-	        var sources = creep.room.find(FIND_SOURCES);
-            if(creep.harvest(sources[1]) == ERR_NOT_IN_RANGE) {
-                creep.moveTo(sources[1], {visualizePathStyle: {stroke: '#DC143C'}});
-            }
-	    }
 	}
 };
 
@@ -3497,8 +3502,8 @@ const roleCarrier = {
             creep.moveTo(contains[0]);
           }
         }else {
-          console.log(`container不够资源，去挖矿`);
-          roleHarvester.run(creep);
+          console.log(`别干活了 原地等着吧`);
+          //roleHarvester.run(creep);
         }
       }
       else {
@@ -3529,6 +3534,33 @@ const roleCarrier = {
  * module.exports.thing = 'a thing';
  *
  * You can import it from another modules like this:
+ * var mod = require('role.harvester');
+ * mod.thing == 'a thing'; // true
+ */
+
+const roleHealer = {
+
+  /** @param {Creep} creep **/
+  run: function(creep) {
+    const target = creep.pos.findClosestByRange(FIND_MY_CREEPS, {
+      filter: function(object) {
+          return object.hits < object.hitsMax;
+      }
+    });
+    if(target) {
+      console.log(`冲去治疗！${target}`);
+        if(creep.heal(target) == ERR_NOT_IN_RANGE) {
+            creep.moveTo(target);
+        }
+    }
+  }
+};
+
+/*
+ * Module code goes here. Use 'module.exports' to export things:
+ * module.exports.thing = 'a thing';
+ *
+ * You can import it from another modules like this:
  * var mod = require('Tower');
  * mod.thing == 'a thing'; // true
  */
@@ -3543,6 +3575,10 @@ const Tower_action = {
       (object.hits < 500000 && object.structureType == STRUCTURE_WALL) ||
       (object.hits < 5000 && object.structureType == STRUCTURE_CONTAINER) 
     });
+    let diren = tower.room.find(FIND_HOSTILE_CREEPS);
+    if(diren.length > 0){
+      tower.attack(diren[0]);
+    }
 
     console.log(`塔修点东西 tag ${targets.length}----塔能量${tower.store[RESOURCE_ENERGY]}`);
     if(targets.length > 0 && tower.store[RESOURCE_ENERGY] > 200) {
@@ -3567,42 +3603,59 @@ const loop = errorMapper( function () {
     if(harvesters.length < 5) {
         var newName = 'Harvester' + Game.time;
         console.log('Spawning new harvester: ' + newName);
-        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,CARRY,CARRY,MOVE,MOVE,MOVE], newName, 
+        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE], newName, 
             {memory: {role: 'harvester'}});        
     }
 
     var builders = _.filter(Game.creeps, (creep) => creep.memory.role == 'builder');
     console.log('builders: ' + builders.length);
 
-    if(builders.length < 2) {
+    if(builders.length < 3) {
         var newName = 'builder' + Game.time;
         console.log('Spawning new builder: ' + newName);
-        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,WORK,CARRY,CARRY,CARRY,MOVE,MOVE], newName, 
+        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE], newName, 
             {memory: {role: 'builder'}});        
     }
 
     var upgraders = _.filter(Game.creeps, (creep) => creep.memory.role == 'upgrader');
     console.log('upgraders: ' + upgraders.length);
 
-    if(upgraders.length < 4) {
+    if(upgraders.length < 5) {
         var newName = 'upgrader' + Game.time;
         console.log('Spawning new upgrader: ' + newName);
-        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,WORK,WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE], newName, 
+        Game.spawns['Spawn1'].spawnCreep([WORK,WORK,WORK,WORK,WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE], newName, 
             {memory: {role: 'upgrader'}});        
     }
 
 
-    let carriers = _.filter(Game.creeps, (creep) => creep.memory.role == 'carrier');
-    console.log('carriers: ' + carriers.length);
+    // let carriers = _.filter(Game.creeps, (creep) => creep.memory.role == 'carrier');
+    // console.log('carriers: ' + carriers.length);
 
-    if(carriers.length < 1) {
-        var newName = 'carrier' + Game.time;
-        console.log('Spawning new carrier: ' + newName);
-        Game.spawns['Spawn1'].spawnCreep([WORK,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], newName, 
-            {memory: {role: 'carrier'}});        
-    }
+    // if(carriers.length < 1) {
+    //     var newName = 'carrier' + Game.time;
+    //     console.log('Spawning new carrier: ' + newName);
+    //     Game.spawns['Spawn1'].spawnCreep([WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], newName, 
+    //         {memory: {role: 'carrier'}});        
+    // }
     
 
+    //有伤员吗
+    const shangyuan = Game.spawns['Spawn1'].room.find(FIND_MY_CREEPS, {
+        filter: function(object) {
+            return object.hits < object.hitsMax;
+        }
+    });
+    if(shangyuan.length > 0){
+        let healers = _.filter(Game.creeps, (creep) => creep.memory.role == 'healer');
+        console.log(`有伤员${shangyuan.length}，产治疗兵healers: ' + ${healers.length}`);
+    
+        if(healers.length < 1) {
+            var newName = 'healer' + Game.time;
+            console.log('Spawning new carrier: ' + newName);
+            Game.spawns['Spawn1'].spawnCreep([HEAL,HEAL,MOVE,MOVE,MOVE], newName, 
+                {memory: {role: 'healer'}});        
+        }
+    }
     
     if(Game.spawns['Spawn1'].spawning) { 
         var spawningCreep = Game.creeps[Game.spawns['Spawn1'].spawning.name];
@@ -3635,6 +3688,9 @@ const loop = errorMapper( function () {
         }
         if(creep.memory.role == 'carrier') {
             roleCarrier.run(creep);
+        }
+        if(creep.memory.role == 'healer') {
+            roleHealer.run(creep);
         }
     }
 
